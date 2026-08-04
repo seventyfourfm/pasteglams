@@ -3959,6 +3959,7 @@ struct BindInfo_t
 	int iBind;
 	Bind_t& tBind;
 };
+
 void CMenu::DrawBinds()
 {
 	using namespace ImGui;
@@ -4077,15 +4078,41 @@ void CMenu::DrawBinds()
 	float flWidth = flNameWidth + flInfoWidth + flStateWidth + (m_bIsOpen ? H::Draw.Scale(113) : H::Draw.Scale(14));
 	float flHeight = H::Draw.Scale(18 * vInfo.size() + (Vars::Menu::BindWindowTitle.Value ? 42 : 12));
 	SetNextWindowSize({ flWidth, flHeight }, ImGuiCond_Always);
+
 	PushStyleVar(ImGuiStyleVar_WindowMinSize, { H::Draw.Scale(40), H::Draw.Scale(40) });
+	PushStyleColor(ImGuiCol_WindowBg, {});
+	PushStyleColor(ImGuiCol_Border, F::Render.Active.Value);
+	PushStyleVar(ImGuiStyleVar_WindowBorderSize, H::Draw.Scale(1));
+	PushStyleVar(ImGuiStyleVar_WindowRounding, H::Draw.Scale(3));
+
 	if (Begin("Binds", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings))
 	{
 		ImVec2 vWindowPos = GetWindowPos();
 
+		// Clean background
+		float flAlpha = 0.85f;
+		ImColor bgImColor = F::Render.Background0;
+		GetWindowDrawList()->AddRectFilled(
+			vWindowPos,
+			vWindowPos + GetWindowSize(),
+			IM_COL32(
+				static_cast<int>(bgImColor.Value.x * 255),
+				static_cast<int>(bgImColor.Value.y * 255),
+				static_cast<int>(bgImColor.Value.z * 255),
+				static_cast<int>(flAlpha * 255)
+			),
+			H::Draw.Scale(3),
+			ImDrawFlags_RoundCornersAll
+		);
+
 		if (Vars::Menu::BindWindowTitle.Value)
+		{
 			RenderTwoToneBackground(H::Draw.Scale(28), F::Render.Background0, F::Render.Background0p5, F::Render.Background2);
+		}
 		else
+		{
 			RenderBackground(F::Render.Background0p5, F::Render.Background2);
+		}
 
 		tDragBox.x = vWindowPos.x; tDragBox.y = vWindowPos.y; tOld = tDragBox;
 		if (m_bIsOpen)
@@ -4112,33 +4139,84 @@ void CMenu::DrawBinds()
 			if (m_bIsOpen)
 				PushTransparent(!F::Binds.WillBeEnabled(iBind), true);
 
-			SetCursorPos({ flPosX += H::Draw.Scale(12), H::Draw.Scale(iListStart + 18 * i) });
+			ImVec2 vEntryPos = { flPosX += H::Draw.Scale(12), H::Draw.Scale(iListStart + 18 * i) };
+			float flEntryWidth = flWidth - H::Draw.Scale(24);
+
+			// Clean highlight - like a smooth glow with no borders
+			if (tBind.m_bActive)
+			{
+				ImColor fillImColor = F::Render.Accent.Value;
+
+				// Subtle background glow
+				GetWindowDrawList()->AddRectFilled(
+					GetDrawPos() + vEntryPos - ImVec2(H::Draw.Scale(4), H::Draw.Scale(4)),
+					GetDrawPos() + vEntryPos + ImVec2(flEntryWidth, H::Draw.Scale(16)) + ImVec2(H::Draw.Scale(4), H::Draw.Scale(4)),
+					IM_COL32(
+						static_cast<int>(fillImColor.Value.x * 255),
+						static_cast<int>(fillImColor.Value.y * 255),
+						static_cast<int>(fillImColor.Value.z * 255),
+						25  // Very subtle
+					),
+					H::Draw.Scale(4)
+				);
+
+				// Slightly brighter inner glow
+				GetWindowDrawList()->AddRectFilled(
+					GetDrawPos() + vEntryPos - ImVec2(H::Draw.Scale(2), H::Draw.Scale(2)),
+					GetDrawPos() + vEntryPos + ImVec2(flEntryWidth, H::Draw.Scale(16)) + ImVec2(H::Draw.Scale(2), H::Draw.Scale(2)),
+					IM_COL32(
+						static_cast<int>(fillImColor.Value.x * 255),
+						static_cast<int>(fillImColor.Value.y * 255),
+						static_cast<int>(fillImColor.Value.z * 255),
+						40  // Slightly more visible
+					),
+					H::Draw.Scale(3)
+				);
+
+				// Core highlight
+				GetWindowDrawList()->AddRectFilled(
+					GetDrawPos() + vEntryPos,
+					GetDrawPos() + vEntryPos + ImVec2(flEntryWidth, H::Draw.Scale(16)),
+					IM_COL32(
+						static_cast<int>(fillImColor.Value.x * 255),
+						static_cast<int>(fillImColor.Value.y * 255),
+						static_cast<int>(fillImColor.Value.z * 255),
+						60  // Visible but clean
+					),
+					H::Draw.Scale(2)
+				);
+			}
+
+			// Clean text
+			SetCursorPos(vEntryPos);
 			PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Accent.Value : F::Render.Inactive.Value);
 			FText(sName);
 			PopStyleColor();
 
-			SetCursorPos({ flPosX += flNameWidth, H::Draw.Scale(iListStart + 18 * i) });
+			SetCursorPos({ vEntryPos.x + flNameWidth, vEntryPos.y });
 			PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Active.Value : F::Render.Inactive.Value);
 			FText(sInfo.c_str());
 
-			SetCursorPos({ flPosX += flInfoWidth, H::Draw.Scale(iListStart + 18 * i) });
+			SetCursorPos({ vEntryPos.x + flNameWidth + flInfoWidth, vEntryPos.y });
 			FText(sState.c_str());
 			PopStyleColor();
 
 			if (m_bIsOpen)
-			{	// buttons
-				SetCursorPos({ flWidth - H::Draw.Scale(26), H::Draw.Scale(iListStart - 2 + 18 * i) });
+			{
+				int iButtonY = vEntryPos.y - 2;
+
+				SetCursorPos({ flWidth - H::Draw.Scale(26), H::Draw.Scale(iButtonY + 18 * i) });
 				bool bDelete = IconButton(ICON_MD_DELETE, H::Draw.Scale(18));
 
-				SetCursorPos({ flWidth - H::Draw.Scale(51), H::Draw.Scale(iListStart - 2 + 18 * i) });
+				SetCursorPos({ flWidth - H::Draw.Scale(51), H::Draw.Scale(iButtonY + 18 * i) });
 				bool bNot = IconButton(!tBind.m_bNot ? ICON_MD_CODE : ICON_MD_CODE_OFF, H::Draw.Scale(18));
 
 				PushTransparent(Transparent || tBind.m_iVisibility == BindVisibilityEnum::Hidden, true);
-				SetCursorPos({ flWidth - H::Draw.Scale(76), H::Draw.Scale(iListStart - 2 + 18 * i) });
+				SetCursorPos({ flWidth - H::Draw.Scale(76), H::Draw.Scale(iButtonY + 18 * i) });
 				bool bVisibility = IconButton(tBind.m_iVisibility == BindVisibilityEnum::Always ? ICON_MD_VISIBILITY : ICON_MD_VISIBILITY_OFF, H::Draw.Scale(18));
 				PopTransparent(1, 1);
 
-				SetCursorPos({ flWidth - H::Draw.Scale(101), H::Draw.Scale(iListStart - 2 + 18 * i) });
+				SetCursorPos({ flWidth - H::Draw.Scale(101), H::Draw.Scale(iButtonY + 18 * i) });
 				bool bEnable = IconButton(tBind.m_bEnabled ? ICON_MD_TOGGLE_ON : ICON_MD_TOGGLE_OFF, H::Draw.Scale(18));
 
 				PopTransparent(1, 1);
@@ -4154,7 +4232,7 @@ void CMenu::DrawBinds()
 					tBind.m_bNot = !tBind.m_bNot;
 				else if (bDelete)
 				{
-					if (tBind.m_vVars.size() <= 1 && !F::Binds.HasChildren(iBind) || U::KeyHandler.Down(VK_SHIFT)) // allow user to quickly remove binds
+					if (tBind.m_vVars.size() <= 1 && !F::Binds.HasChildren(iBind) || U::KeyHandler.Down(VK_SHIFT))
 						F::Binds.RemoveBind(iBind);
 					else
 						OpenPopup(std::format("DeleteBind{}", iBind).c_str());
@@ -4164,7 +4242,7 @@ void CMenu::DrawBinds()
 				{
 					FText(std::format("Do you really want to delete '{}'{}?", tBind.m_sName, F::Binds.HasChildren(iBind) ? " and all of its children" : "").c_str());
 
-					SetCursorPosY(GetCursorPosY() - 8); // stupid and i don't know why this is needed here
+					SetCursorPosY(GetCursorPosY() - 8);
 					if (FButton("Yes", FButtonEnum::Left))
 					{
 						F::Binds.RemoveBind(iBind);
@@ -4186,8 +4264,10 @@ void CMenu::DrawBinds()
 
 		End();
 	}
-	PopStyleVar();
+	PopStyleVar(3);
+	PopStyleColor(2);
 }
+
 #pragma endregion
 
 static inline void ManageVars()
