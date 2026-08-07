@@ -648,28 +648,16 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 		H::Draw.StringOutlined(fFont, dtPos.x, dtPos.y + 2, Vars::Colors::IndicatorTextMisc.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOP, std::string("Streaming crits " + std::to_string(flTime) + "s").c_str());
 		return;
 	}
-	else if (!bIsCritBanned && iAvailableCrits > 0)
-	{
-		if (!pWeapon->IsRapidFire() || flTickBase >= pWeapon->m_flLastRapidFireCritCheckTime() + 1.f)
-		{
-			flProgress = 1.0f;
-			bIsCritReady = true;
-		}
-		else
-		{
-			float flTime = pWeapon->m_flLastRapidFireCritCheckTime() + 1.f - flTickBase;
-			H::Draw.StringOutlined(fFont, dtPos.x, dtPos.y + 2, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOP, std::string("Wait " + std::to_string(flTime) + "s").c_str());
-			return;
-		}
-	}
 	else if (!bIsCritBanned && iPotentialCrits > 0)
 	{
-		// Calculate progress towards next crit
-		int iShotsToCrit = m_iNextCrit;
-		if (iShotsToCrit > 0)
+		// BAR FILLS BASED ON AVAILABLE CRITS VS TOTAL CRITS
+		// This is the key change - progress = available / total
+		flProgress = float(iAvailableCrits) / float(iPotentialCrits);
+		flProgress = std::clamp(flProgress, 0.0f, 1.0f);
+
+		if (iAvailableCrits > 0)
 		{
-			flProgress = 1.0f - (float(iShotsToCrit) / float(iPotentialCrits));
-			flProgress = std::clamp(flProgress, 0.0f, 0.99f);
+			bIsCritReady = true;
 		}
 	}
 	else if (bIsCritBanned)
@@ -682,7 +670,7 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 
 	// Draw status text
 	std::string sStatusText;
-	if (bIsCritReady)
+	if (bIsCritReady && !bIsCritBanned)
 	{
 		sStatusText = "Crit Ready";
 	}
@@ -693,36 +681,32 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 	else if (iPotentialCrits > 0 && !bIsCritBanned)
 	{
 		int iShots = m_iNextCrit;
-		if (iShots > 0)
+		if (iShots > 0 && iAvailableCrits == 0)
 		{
 			sStatusText = "Crit in " + std::to_string(iShots) + " shot" + (iShots == 1 ? "" : "s");
-		}
-		else if (iAvailableCrits > 0)
-		{
-			sStatusText = "Crit Ready";
 		}
 	}
 
 	if (!sStatusText.empty())
 	{
-		Color_t textColor = bIsCritReady ? Vars::Colors::IndicatorTextGood.Value :
+		Color_t textColor = bIsCritReady && !bIsCritBanned ? Vars::Colors::IndicatorTextGood.Value :
 			bIsCritBanned ? Vars::Colors::IndicatorTextBad.Value :
 			Vars::Menu::Theme::Active.Value;
 		H::Draw.StringOutlined(fFont, dtPos.x, dtPos.y + 2, textColor, Vars::Menu::Theme::Background.Value, ALIGN_TOP, sStatusText.c_str());
 	}
 
-	// Draw the bar
+	// Draw the bar with darkening effect
 	int iSizeX = H::Draw.Scale(100, Scale_Round), iSizeY = H::Draw.Scale(12, Scale_Round);
 	int iPosX = dtPos.x - iSizeX / 2, iPosY = dtPos.y + fFont.m_nTall + H::Draw.Scale(4) + 1;
 
-	// Background
-	Color_t darkBg = Color_t(0, 0, 0, 120);
+	// Subtle dark background that fades as progress increases
+	Color_t darkBg = Color_t(0, 0, 0, static_cast<int>(80 * (1.0f - flProgress)));
 	H::Draw.FillRect(iPosX - H::Draw.Scale(2, Scale_Round), iPosY - H::Draw.Scale(2, Scale_Round),
 		iSizeX + H::Draw.Scale(4, Scale_Round), iSizeY + H::Draw.Scale(4, Scale_Round), darkBg);
 
-	// Border
+	// Border with constant visibility but subtle brightness change
 	Color_t borderColor = Vars::Menu::Theme::Accent.Value;
-	borderColor.a = 150;
+	borderColor.a = static_cast<int>(80 + (flProgress * 175));
 	H::Draw.LineRect(iPosX, iPosY, iSizeX, iSizeY, borderColor);
 
 	// Fill bar
@@ -737,14 +721,14 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 
 		// Choose color based on state
 		Color_t fillColor;
-		if (bIsCritReady)
+		if (bIsCritReady && !bIsCritBanned)
 			fillColor = Vars::Colors::IndicatorTextGood.Value;
 		else if (bIsCritBanned)
 			fillColor = Vars::Colors::IndicatorTextBad.Value;
 		else
 			fillColor = Vars::Menu::Theme::Active.Value;
 
-		fillColor.a = 200;
+		fillColor.a = static_cast<int>(60 + (flProgress * 195));
 		H::Draw.FillRect(iPosX, iPosY, iSizeX, iSizeY, fillColor);
 		H::Draw.EndClipping();
 	}
@@ -752,26 +736,14 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 	// Draw crit count - shows available / total crits
 	if (iPotentialCrits > 0 && !bIsCritBanned)
 	{
-		std::string sCritCount;
-		if (bIsCritReady)
-		{
-			// When crit is ready, show the count with a checkmark
-			sCritCount = std::to_string(iAvailableCrits) + " / " + std::to_string(iPotentialCrits) + " crits";
-		}
-		else
-		{
-			// Show normal count
-			sCritCount = std::to_string(iAvailableCrits) + " / " + std::to_string(iPotentialCrits) + " crits";
-		}
+		std::string sCritCount = std::to_string(iAvailableCrits) + " / " + std::to_string(iPotentialCrits) + " crits";
 
-		// Color: green if we have crits available, yellow/active if not
 		Color_t countColor = (iAvailableCrits > 0) ? Vars::Colors::IndicatorTextGood.Value : Vars::Menu::Theme::Active.Value;
 		H::Draw.StringOutlined(fFont, dtPos.x, dtPos.y + fFont.m_nTall + H::Draw.Scale(22, Scale_Round) + 2,
 			countColor, Vars::Menu::Theme::Background.Value, ALIGN_TOP, sCritCount.c_str());
 	}
 	else if (iPotentialCrits > 0 && bIsCritBanned)
 	{
-		// Show crit count even when banned but with different color
 		std::string sCritCount = std::to_string(iAvailableCrits) + " / " + std::to_string(iPotentialCrits) + " crits (banned)";
 		H::Draw.StringOutlined(fFont, dtPos.x, dtPos.y + fFont.m_nTall + H::Draw.Scale(22, Scale_Round) + 2,
 			Vars::Colors::IndicatorTextBad.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOP, sCritCount.c_str());
