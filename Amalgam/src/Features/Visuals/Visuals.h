@@ -1,6 +1,7 @@
 #pragma once
 #include "../../SDK/SDK.h"
 
+
 struct Projectile_t
 {
 	std::vector<Vec3> m_vPath = {};
@@ -35,6 +36,7 @@ private:
 	std::vector<Vec3> m_vAngles = {};
 
 public:
+	void DrawShotPositions();
 	void Event(IGameEvent* pEvent, uint32_t uHash);
 	void Store();
 	void Tick();
@@ -52,6 +54,7 @@ public:
 	void OverrideWorldTextures();
 	void Modulate();
 	void RestoreWorldModulation();
+	
 
 	void CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	void LocalAnimations(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool bSendPacket);
