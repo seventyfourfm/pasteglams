@@ -531,6 +531,10 @@ void CMenu::MenuAimbot(int iTab)
 			{
 				if (Section("Prediction"))
 				{
+					FColorPicker(Vars::Colors::ShotPosition, FColorPickerEnum::Left);
+					FToggle(Vars::Visuals::ShotPosition::Enabled, FToggleEnum::Right);
+					FSlider(Vars::Visuals::ShotPosition::Duration, FSliderEnum::Left);
+					FSlider(Vars::Visuals::ShotPosition::Size, FSliderEnum::Right);
 					FDropdown(Vars::Visuals::Prediction::PlayerPath, FDropdownEnum::Left, -10);
 					FColorPicker(Vars::Colors::PlayerPathIgnoreZ, FColorPickerEnum::SameLine, { 0, H::Draw.Scale(20) }, { H::Draw.Scale(10), H::Draw.Scale(20) });
 					FColorPicker(Vars::Colors::PlayerPath, FColorPickerEnum::SameLine, { H::Draw.Scale(-10), H::Draw.Scale(-20) }, { H::Draw.Scale(10), H::Draw.Scale(20) });
@@ -3001,7 +3005,7 @@ void CMenu::MenuSettings(int iTab)
 
 						// background
 						float flWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(28) * std::min(x, 3);
-						float flHeight = flWidth;
+						float flHeight = H::Draw.Scale(36); //idk why its even was set dnamicly but ok
 						ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
 						if (iBind != _iBind)
 							GetWindowDrawList()->AddRectFilled(vDrawPos, vDrawPos + ImVec2(flWidth, flHeight), F::Render.Background1p5, H::Draw.Scale(4));
@@ -4081,7 +4085,7 @@ void CMenu::DrawBinds()
 
 	PushStyleVar(ImGuiStyleVar_WindowMinSize, { H::Draw.Scale(40), H::Draw.Scale(40) });
 	PushStyleColor(ImGuiCol_WindowBg, {});
-	PushStyleColor(ImGuiCol_Border, F::Render.Active.Value);
+	PushStyleColor(ImGuiCol_Border, F::Render.Accent.Value); // Use accent color for border
 	PushStyleVar(ImGuiStyleVar_WindowBorderSize, H::Draw.Scale(1));
 	PushStyleVar(ImGuiStyleVar_WindowRounding, H::Draw.Scale(3));
 
@@ -4142,12 +4146,12 @@ void CMenu::DrawBinds()
 			ImVec2 vEntryPos = { flPosX += H::Draw.Scale(12), H::Draw.Scale(iListStart + 18 * i) };
 			float flEntryWidth = flWidth - H::Draw.Scale(24);
 
-			// Clean highlight - like a smooth glow with no borders
+			// Clean highlight with lower opacity - like a subtle glow
 			if (tBind.m_bActive)
 			{
 				ImColor fillImColor = F::Render.Accent.Value;
 
-				// Subtle background glow
+				// Outer glow - very subtle
 				GetWindowDrawList()->AddRectFilled(
 					GetDrawPos() + vEntryPos - ImVec2(H::Draw.Scale(4), H::Draw.Scale(4)),
 					GetDrawPos() + vEntryPos + ImVec2(flEntryWidth, H::Draw.Scale(16)) + ImVec2(H::Draw.Scale(4), H::Draw.Scale(4)),
@@ -4155,12 +4159,12 @@ void CMenu::DrawBinds()
 						static_cast<int>(fillImColor.Value.x * 255),
 						static_cast<int>(fillImColor.Value.y * 255),
 						static_cast<int>(fillImColor.Value.z * 255),
-						25  // Very subtle
+						12  // Very subtle outer glow
 					),
 					H::Draw.Scale(4)
 				);
 
-				// Slightly brighter inner glow
+				// Inner glow - slightly more visible
 				GetWindowDrawList()->AddRectFilled(
 					GetDrawPos() + vEntryPos - ImVec2(H::Draw.Scale(2), H::Draw.Scale(2)),
 					GetDrawPos() + vEntryPos + ImVec2(flEntryWidth, H::Draw.Scale(16)) + ImVec2(H::Draw.Scale(2), H::Draw.Scale(2)),
@@ -4168,12 +4172,12 @@ void CMenu::DrawBinds()
 						static_cast<int>(fillImColor.Value.x * 255),
 						static_cast<int>(fillImColor.Value.y * 255),
 						static_cast<int>(fillImColor.Value.z * 255),
-						40  // Slightly more visible
+						25  // Very low opacity inner glow
 					),
 					H::Draw.Scale(3)
 				);
 
-				// Core highlight
+				// Core highlight - barely visible
 				GetWindowDrawList()->AddRectFilled(
 					GetDrawPos() + vEntryPos,
 					GetDrawPos() + vEntryPos + ImVec2(flEntryWidth, H::Draw.Scale(16)),
@@ -4181,13 +4185,13 @@ void CMenu::DrawBinds()
 						static_cast<int>(fillImColor.Value.x * 255),
 						static_cast<int>(fillImColor.Value.y * 255),
 						static_cast<int>(fillImColor.Value.z * 255),
-						60  // Visible but clean
+						35  // Very low opacity so text is readable
 					),
 					H::Draw.Scale(2)
 				);
 			}
 
-			// Clean text
+			// Clean text - accent color will be clearly visible now
 			SetCursorPos(vEntryPos);
 			PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Accent.Value : F::Render.Inactive.Value);
 			FText(sName);
