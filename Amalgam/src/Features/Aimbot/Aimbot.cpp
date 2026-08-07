@@ -74,6 +74,18 @@ void CAimbot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	RunMain(pLocal, pWeapon, pCmd);
 
 	G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true);
+
+	if (G::Attacking == 1 && Vars::Visuals::ShotPosition::Enabled.Value && m_bRan)
+	{
+		if (pLocal && pLocal->IsAlive())
+		{
+			Vec3 vOrigin = pLocal->GetAbsOrigin();
+			float flDuration = Vars::Visuals::ShotPosition::Duration.Value;
+			Color_t tColor = Vars::Colors::ShotPosition.Value;
+
+			G::ShotPositionStorage.emplace_back(vOrigin, I::GlobalVars->curtime + flDuration, tColor, true);
+		}
+	}
 }
 
 void CAimbot::Draw(CTFPlayer* pLocal)
