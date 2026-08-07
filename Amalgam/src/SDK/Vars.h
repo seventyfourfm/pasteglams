@@ -252,6 +252,8 @@ NAMESPACE_BEGIN(Vars)
 		CVar(SplashRadiusIgnoreZ, "Splash radius ignore Z color", Color_t(255, 255, 255, 255), VISUAL);
 		CVar(RealPath, "Real path color", Color_t(255, 255, 255, 0), NOSAVE | DEBUGVAR);
 		CVar(RealPathIgnoreZ, "Real path ignore Z color", Color_t(255, 255, 255, 255), NOSAVE | DEBUGVAR);
+		CVar(ShotPosition, VA_LIST("Shot position", "Shot position cham color"), Color_t(255, 0, 0, 255), VISUAL);
+		CVar(ShotPositionIgnoreZ, VA_LIST("Shot position ignore Z", "Shot position cham color through walls"), Color_t(255, 0, 0, 100), VISUAL);
 	NAMESPACE_END(Colors)
 
 	NAMESPACE_BEGIN(Aimbot)
@@ -542,6 +544,12 @@ NAMESPACE_BEGIN(Vars)
 			CVar(ScoreboardColors, "Scoreboard colors", false, VISUAL);
 			CVar(CleanScreenshots, "Clean screenshots", true);
 		NAMESPACE_END(UI)
+
+			NAMESPACE_BEGIN(ShotPosition, Visuals)
+			CVar(Enabled, VA_LIST("Enabled", "Shot position chams"), false, VISUAL);
+		CVar(Duration, VA_LIST("Duration", "Shot position cham duration"), 2.f, VISUAL | SLIDER_MIN | SLIDER_PRECISION, 0.5f, 10.f, 0.5f);
+		CVar(Size, VA_LIST("Size", "Shot position cham size"), 10.f, VISUAL | SLIDER_MIN | SLIDER_PRECISION, 2.f, 50.f, 1.f);
+		NAMESPACE_END(ShotPosition)
 
 		NAMESPACE_BEGIN(Thirdperson)
 			CVar(Enabled, "Thirdperson", false, VISUAL);
