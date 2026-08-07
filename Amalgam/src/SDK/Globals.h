@@ -6,6 +6,14 @@
 
 MAKE_SIGNATURE(RandomSeed, "client.dll", "0F B6 1D ? ? ? ? 89 9D", 0x0);
 
+struct DrawShotPosition_t
+{
+	Vec3 m_vOrigin;
+	float m_flTime;
+	Color_t m_tColor;
+	bool m_bZBuffer = false;
+};
+
 struct DrawLine_t
 {
 	std::pair<Vec3, Vec3> m_paOrigin;
@@ -83,7 +91,7 @@ struct AimPoint_t
 namespace G
 {
 	inline bool Unload = false;
-
+	inline std::vector<DrawShotPosition_t> ShotPositionStorage = {};
 	inline int Attacking = 0;
 	inline bool Reloading = false;
 	inline bool CanPrimaryAttack = false;
