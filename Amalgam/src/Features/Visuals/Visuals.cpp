@@ -328,6 +328,40 @@ std::vector<DrawBox_t> CVisuals::GetHitboxes(matrix3x4* aBones, CBaseAnimating* 
 	return vBoxes;
 }
 
+void CVisuals::DrawShotPositions()
+{
+	if (!Vars::Visuals::ShotPosition::Enabled.Value)
+		return;
+
+	// Don't draw in first person
+	if (!I::Input->CAM_IsThirdPerson())
+		return;
+
+	for (auto& tShotPos : G::ShotPositionStorage)
+	{
+		if (tShotPos.m_flTime < I::GlobalVars->curtime)
+			continue;
+
+		float flSize = Vars::Visuals::ShotPosition::Size.Value;
+
+		// Tall pillar box
+		Vec3 vMins = Vec3(-flSize, -flSize, 0); // Bottom starts at ground
+		Vec3 vMaxs = Vec3(flSize, flSize, flSize * 3.0f); // 3x height
+
+		// Draw through walls (ignore z-buffer)
+		if (Vars::Colors::ShotPositionIgnoreZ.Value.a)
+		{
+			H::Draw.RenderWireframeBox(tShotPos.m_vOrigin, vMins, vMaxs, Vec3(), Vars::Colors::ShotPositionIgnoreZ.Value, false);
+		}
+
+		// Draw normal (respect z-buffer)
+		if (Vars::Colors::ShotPosition.Value.a)
+		{
+			H::Draw.RenderWireframeBox(tShotPos.m_vOrigin, vMins, vMaxs, Vec3(), Vars::Colors::ShotPosition.Value, true);
+		}
+	}
+}
+
 void CVisuals::DrawEffects()
 {
 	for (auto& tLine : G::LineStorage)
@@ -408,6 +442,7 @@ void CVisuals::DrawEffects()
 	}
 
 	DrawHitboxes();
+	DrawShotPositions();
 }
 
 static std::vector<DrawBox_t> s_vHitboxes = {}, s_vLocalHitboxes = {};
