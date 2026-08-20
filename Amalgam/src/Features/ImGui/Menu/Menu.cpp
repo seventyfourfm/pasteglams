@@ -2802,7 +2802,7 @@ void CMenu::MenuSettings(int iTab)
 			SetCursorPos({ H::Draw.Scale(8), GetCursorPosY() });
 
 			// Calculate width to span the full area (minus padding)
-			float flFullWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(4);
+			float flFullWidth = H::Draw.Scale(100);
 			FInputText("Search binds...", sBindSearch, flFullWidth, ImGuiInputTextFlags_None);
 
 			bool bSearchActive = !sBindSearch.empty();
