@@ -2798,6 +2798,89 @@ void CMenu::MenuSettings(int iTab)
 		} EndSection();
 		if (Section("Binds"))
 		{
+			static std::string sBindSearch = "";
+			SetCursorPos({ H::Draw.Scale(8), GetCursorPosY() });
+
+			// Calculate width to span the full area (minus padding)
+			float flFullWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(4);
+			FInputText("Search binds...", sBindSearch, flFullWidth, ImGuiInputTextFlags_None);
+
+			bool bSearchActive = !sBindSearch.empty();
+
+			// If search is active, show filtered results as a simple list
+			if (bSearchActive)
+			{
+				std::string sSearchLower = sBindSearch;
+				std::transform(sSearchLower.begin(), sSearchLower.end(), sSearchLower.begin(), ::tolower);
+
+				// Add a "Clear" button next to search
+				SetCursorPos({ H::Draw.Scale(220), GetCursorPosY() - H::Draw.Scale(28) });
+				if (FButton("Clear", FButtonEnum::Fit))
+					sBindSearch = "";
+
+				bool bFoundAny = false;
+				for (int iBindIdx = 0; iBindIdx < F::Binds.m_vBinds.size(); iBindIdx++)
+				{
+					auto& tBind = F::Binds.m_vBinds[iBindIdx];
+
+					std::string sNameLower = tBind.m_sName;
+					std::transform(sNameLower.begin(), sNameLower.end(), sNameLower.begin(), ::tolower);
+
+					if (sNameLower.find(sSearchLower) == std::string::npos)
+						continue;
+
+					bFoundAny = true;
+
+					// Draw a simple bind entry (keep it clean and simple)
+					ImVec2 vOriginalPos = { H::Draw.Scale(8), GetCursorPosY() + H::Draw.Scale(4) };
+
+					float flWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(16);
+					float flHeight = H::Draw.Scale(28);
+					ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
+					GetWindowDrawList()->AddRectFilled(vDrawPos, vDrawPos + ImVec2(flWidth, flHeight), F::Render.Background1p5, H::Draw.Scale(4));
+
+					SetCursorPos(vOriginalPos + ImVec2(H::Draw.Scale(9), H::Draw.Scale(5)));
+					PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Accent.Value : F::Render.Active.Value);
+					FText(tBind.m_sName.c_str());
+					PopStyleColor();
+
+					SetCursorPos(vOriginalPos + ImVec2(H::Draw.Scale(200), H::Draw.Scale(5)));
+					if (tBind.m_iType == BindEnum::Key)
+						FText(U::KeyHandler.String(tBind.m_iKey).c_str());
+					else
+					{
+						std::string sType;
+						switch (tBind.m_iType)
+						{
+						case BindEnum::Class: sType = "Class"; break;
+						case BindEnum::WeaponType: sType = "Weapon"; break;
+						case BindEnum::ItemSlot: sType = "Slot"; break;
+						case BindEnum::Misc: sType = "Misc"; break;
+						}
+						FText(sType.c_str());
+					}
+
+					SetCursorPos(vOriginalPos + ImVec2(flWidth - H::Draw.Scale(60), H::Draw.Scale(5)));
+					PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Accent.Value : F::Render.Inactive.Value);
+					FText(tBind.m_bActive ? "ACTIVE" : "");
+					PopStyleColor();
+
+					SetCursorPos(vOriginalPos);
+					DebugDummy({ flWidth, flHeight });
+				}
+
+				if (!bFoundAny)
+				{
+					SetCursorPos({ H::Draw.Scale(15), GetCursorPosY() + H::Draw.Scale(10) });
+					PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+					FText("No binds found matching your search.");
+					PopStyleColor();
+				}
+
+				EndSection();
+				break;
+			}
+
 			static int iBind = DEFAULT_BIND;
 			static Bind_t tBind = {};
 
@@ -3005,7 +3088,7 @@ void CMenu::MenuSettings(int iTab)
 
 						// background
 						float flWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(28) * std::min(x, 3);
-						float flHeight = H::Draw.Scale(36); //idk why its even was set dnamicly but ok
+						float flHeight = H::Draw.Scale(24); //idk why its even was set dnamicly but ok
 						ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
 						if (iBind != _iBind)
 							GetWindowDrawList()->AddRectFilled(vDrawPos, vDrawPos + ImVec2(flWidth, flHeight), F::Render.Background1p5, H::Draw.Scale(4));
