@@ -2971,13 +2971,6 @@ void CMenu::MenuSettings(int iTab)
 						OpenPopup("DeleteAllFound");
 
 					SameLine();
-					if (FButton("Disable All Found", FButtonEnum::Fit))
-					{
-						for (int iIdx : vFoundBinds)
-							F::Binds.m_vBinds[iIdx].m_bEnabled = false;
-					}
-
-					SameLine();
 					if (FButton("Enable All Found", FButtonEnum::Fit))
 					{
 						for (int iIdx : vFoundBinds)
