@@ -2799,6 +2799,10 @@ void CMenu::MenuSettings(int iTab)
 		if (Section("Binds"))
 		{
 			static std::string sBindSearch = "";
+			static int iBind = DEFAULT_BIND;
+			static Bind_t tBind = {};
+
+			static int bParent = false;
 			SetCursorPos({ H::Draw.Scale(8), GetCursorPosY() });
 
 			// Calculate width to span the full area (minus padding)
@@ -2808,17 +2812,23 @@ void CMenu::MenuSettings(int iTab)
 			bool bSearchActive = !sBindSearch.empty();
 
 			// If search is active, show filtered results as a simple list
+			// In MenuSettings, Binds section (case 1)
+
 			if (bSearchActive)
 			{
 				std::string sSearchLower = sBindSearch;
 				std::transform(sSearchLower.begin(), sSearchLower.end(), sSearchLower.begin(), ::tolower);
 
-				// Add a "Clear" button next to search
+				// Clear button
 				SetCursorPos({ H::Draw.Scale(220), GetCursorPosY() - H::Draw.Scale(28) });
 				if (FButton("Clear", FButtonEnum::Fit))
 					sBindSearch = "";
 
 				bool bFoundAny = false;
+
+				// Store found binds for potential batch operations
+				std::vector<int> vFoundBinds;
+
 				for (int iBindIdx = 0; iBindIdx < F::Binds.m_vBinds.size(); iBindIdx++)
 				{
 					auto& tBind = F::Binds.m_vBinds[iBindIdx];
@@ -2830,8 +2840,8 @@ void CMenu::MenuSettings(int iTab)
 						continue;
 
 					bFoundAny = true;
+					vFoundBinds.push_back(iBindIdx);
 
-					// Draw a simple bind entry (keep it clean and simple)
 					ImVec2 vOriginalPos = { H::Draw.Scale(8), GetCursorPosY() + H::Draw.Scale(4) };
 
 					float flWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(16);
@@ -2839,11 +2849,13 @@ void CMenu::MenuSettings(int iTab)
 					ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
 					GetWindowDrawList()->AddRectFilled(vDrawPos, vDrawPos + ImVec2(flWidth, flHeight), F::Render.Background1p5, H::Draw.Scale(4));
 
+					// Bind name with active state
 					SetCursorPos(vOriginalPos + ImVec2(H::Draw.Scale(9), H::Draw.Scale(5)));
 					PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Accent.Value : F::Render.Active.Value);
 					FText(tBind.m_sName.c_str());
 					PopStyleColor();
 
+					// Bind info
 					SetCursorPos(vOriginalPos + ImVec2(H::Draw.Scale(200), H::Draw.Scale(5)));
 					if (tBind.m_iType == BindEnum::Key)
 						FText(U::KeyHandler.String(tBind.m_iKey).c_str());
@@ -2860,13 +2872,136 @@ void CMenu::MenuSettings(int iTab)
 						FText(sType.c_str());
 					}
 
-					SetCursorPos(vOriginalPos + ImVec2(flWidth - H::Draw.Scale(60), H::Draw.Scale(5)));
+					// Active status
+					SetCursorPos(vOriginalPos + ImVec2(H::Draw.Scale(350), H::Draw.Scale(5)));
 					PushStyleColor(ImGuiCol_Text, tBind.m_bActive ? F::Render.Accent.Value : F::Render.Inactive.Value);
 					FText(tBind.m_bActive ? "ACTIVE" : "");
 					PopStyleColor();
 
+					// --- ACTION BUTTONS FOR SEARCH RESULTS ---
+
+					// Delete button
+					SetCursorPos(vOriginalPos + ImVec2(flWidth - H::Draw.Scale(30), H::Draw.Scale(2)));
+					if (IconButton(ICON_MD_DELETE))
+					{
+						if (tBind.m_vVars.size() <= 1 && !F::Binds.HasChildren(iBindIdx) || U::KeyHandler.Down(VK_SHIFT))
+							F::Binds.RemoveBind(iBindIdx);
+						else
+							OpenPopup(std::format("DeleteBindSearch{}", iBindIdx).c_str());
+					}
+
+					// Toggle enable/disable
+					SetCursorPos(vOriginalPos + ImVec2(flWidth - H::Draw.Scale(55), H::Draw.Scale(2)));
+					if (IconButton(tBind.m_bEnabled ? ICON_MD_TOGGLE_ON : ICON_MD_TOGGLE_OFF))
+						tBind.m_bEnabled = !tBind.m_bEnabled;
+
+					// Edit button (go to bind edit mode)
+					SetCursorPos(vOriginalPos + ImVec2(flWidth - H::Draw.Scale(80), H::Draw.Scale(2)));
+					if (IconButton(ICON_MD_EDIT))
+					{
+						// This sets the bind for editing in the main bind editor
+						iBind = iBindIdx;
+						tBind = F::Binds.m_vBinds[iBindIdx];
+						//  no
+						// sBindSearch = "";
+					}
+
+					// Visibility toggle
+					SetCursorPos(vOriginalPos + ImVec2(flWidth - H::Draw.Scale(105), H::Draw.Scale(2)));
+					if (IconButton(tBind.m_iVisibility == BindVisibilityEnum::Always ? ICON_MD_VISIBILITY : ICON_MD_VISIBILITY_OFF))
+						tBind.m_iVisibility = (tBind.m_iVisibility + 1) % 3;
+
+					// Clickable row for right-click menu
 					SetCursorPos(vOriginalPos);
 					DebugDummy({ flWidth, flHeight });
+
+					if (IsItemClicked(ImGuiMouseButton_Right))
+						OpenPopup(std::format("SearchRightClicked{}", iBindIdx).c_str());
+
+					// Delete confirmation popup
+					if (FBeginPopupModal(std::format("DeleteBindSearch{}", iBindIdx).c_str()))
+					{
+						FText(std::format("Do you really want to delete '{}'{}?", tBind.m_sName,
+							F::Binds.HasChildren(iBindIdx) ? " and all of its children" : "").c_str());
+
+						if (FButton("Yes", FButtonEnum::Left))
+						{
+							F::Binds.RemoveBind(iBindIdx);
+							CloseCurrentPopup();
+							// Refresh search results
+							bFoundAny = false;
+						}
+						if (FButton("No", FButtonEnum::Right | FButtonEnum::SameLine))
+							CloseCurrentPopup();
+
+						EndPopup();
+					}
+
+					// Right-click context menu
+					if (FBeginPopup(std::format("SearchRightClicked{}", iBindIdx).c_str()))
+					{
+						PushStyleVar(ImGuiStyleVar_ItemSpacing, { H::Draw.Scale(8), H::Draw.Scale(8) });
+
+						if (FSelectable("Edit"))
+						{
+							iBind = iBindIdx;
+							tBind = F::Binds.m_vBinds[iBindIdx];
+						}
+						if (FSelectable(tBind.m_bEnabled ? "Disable" : "Enable"))
+							tBind.m_bEnabled = !tBind.m_bEnabled;
+						if (FSelectable("Delete"))
+						{
+							if (tBind.m_vVars.size() <= 1 && !F::Binds.HasChildren(iBindIdx) || U::KeyHandler.Down(VK_SHIFT))
+								F::Binds.RemoveBind(iBindIdx);
+							else
+								OpenPopup(std::format("DeleteBindSearch{}", iBindIdx).c_str());
+						}
+
+						PopStyleVar();
+						EndPopup();
+					}
+				}
+
+				// Batch operations for search results
+				if (!vFoundBinds.empty())
+				{
+					SetCursorPos({ H::Draw.Scale(8), GetCursorPosY() + H::Draw.Scale(8) });
+
+					if (FButton("Delete All Found", FButtonEnum::Fit))
+						OpenPopup("DeleteAllFound");
+
+					SameLine();
+					if (FButton("Disable All Found", FButtonEnum::Fit))
+					{
+						for (int iIdx : vFoundBinds)
+							F::Binds.m_vBinds[iIdx].m_bEnabled = false;
+					}
+
+					SameLine();
+					if (FButton("Enable All Found", FButtonEnum::Fit))
+					{
+						for (int iIdx : vFoundBinds)
+							F::Binds.m_vBinds[iIdx].m_bEnabled = true;
+					}
+
+					// Confirmation dialog for deleting all
+					if (FBeginPopupModal("DeleteAllFound"))
+					{
+						FText(std::format("Delete all {} binds matching '{}'?", vFoundBinds.size(), sBindSearch).c_str());
+
+						if (FButton("Yes", FButtonEnum::Left))
+						{
+							// Delete in reverse to avoid index issues
+							for (int i = vFoundBinds.size() - 1; i >= 0; i--)
+								F::Binds.RemoveBind(vFoundBinds[i]);
+							CloseCurrentPopup();
+							sBindSearch = ""; // Clear search after deletion
+						}
+						if (FButton("No", FButtonEnum::Right | FButtonEnum::SameLine))
+							CloseCurrentPopup();
+
+						EndPopup();
+					}
 				}
 
 				if (!bFoundAny)
@@ -2880,11 +3015,7 @@ void CMenu::MenuSettings(int iTab)
 				EndSection();
 				break;
 			}
-
-			static int iBind = DEFAULT_BIND;
-			static Bind_t tBind = {};
-
-			static int bParent = false;
+			
 			if (bParent)
 				SetMouseCursor(ImGuiMouseCursor_Hand);
 
