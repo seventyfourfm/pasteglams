@@ -3008,7 +3008,7 @@ void CMenu::MenuSettings(int iTab)
 				EndSection();
 				break;
 			}
-			
+
 			if (bParent)
 				SetMouseCursor(ImGuiMouseCursor_Hand);
 
@@ -3068,8 +3068,11 @@ void CMenu::MenuSettings(int iTab)
 				}
 			} EndChild();
 
+			// The search bar was added above the bind editor, so the original
+			// fixed Y=128 list position now overlaps the editor controls.
+			// Anchor the list to the actual end of the editor instead.
 			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
-			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(128) });
+			SetCursorPos({ H::Draw.Scale(13), GetCursorPosY() + H::Draw.Scale(8) });
 			FText("Binds");
 			SetCursorPosY(GetCursorPosY() - H::Draw.Scale(5));
 			PopStyleColor();
@@ -3212,7 +3215,7 @@ void CMenu::MenuSettings(int iTab)
 
 						// background
 						float flWidth = GetWindowWidth() - GetStyle().WindowPadding.x * 2 - H::Draw.Scale(28) * std::min(x, 3);
-						float flHeight = H::Draw.Scale(24); //idk why its even was set dnamicly but ok
+						float flHeight = H::Draw.Scale(28);
 						ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
 						if (iBind != _iBind)
 							GetWindowDrawList()->AddRectFilled(vDrawPos, vDrawPos + ImVec2(flWidth, flHeight), F::Render.Background1p5, H::Draw.Scale(4));
