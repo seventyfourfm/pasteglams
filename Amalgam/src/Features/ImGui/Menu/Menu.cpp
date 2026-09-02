@@ -2820,7 +2820,7 @@ void CMenu::MenuSettings(int iTab)
 				std::transform(sSearchLower.begin(), sSearchLower.end(), sSearchLower.begin(), ::tolower);
 
 				// Clear button
-				SetCursorPos({ H::Draw.Scale(220), GetCursorPosY() - H::Draw.Scale(28) });
+				SameLine();
 				if (FButton("Clear", FButtonEnum::Fit))
 					sBindSearch = "";
 
