@@ -18,7 +18,7 @@ void CMenu::DrawMenu()
 {
 	using namespace ImGui;
 
-	// Custom overlay/glow from the user's original menu.
+	
 	ImVec2 vDisplaySize = GetIO().DisplaySize;
 	ImVec2 vDefaultMenuSize = { H::Draw.Scale(900), H::Draw.Scale(500) };
 	float flGlowRadius = H::Draw.Scale(Vars::Menu::GlowRadius[DEFAULT_BIND]);
