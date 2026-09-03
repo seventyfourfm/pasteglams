@@ -192,8 +192,8 @@ NAMESPACE_BEGIN(Vars)
 		CVar(CheapText, "Cheap text", false, NOBIND);
 
 		CVar(OverlayAlpha, "Overlay alpha", 200, NOBIND | SLIDER_CLAMP, 0, 255, 5, "%i");
-		CVar(GlowRadius, "Glow radius", 20.f, VISUAL | SLIDER_MIN | SLIDER_PRECISION, 0.f, 50.f, 1.f);
-		CVar(GlowAlpha, "Glow alpha", 15, VISUAL | SLIDER_CLAMP, 0, 100, 5, "%i%%");
+		CVar(GlowRadius, "Glow radius", 10.f, VISUAL | SLIDER_MIN | SLIDER_PRECISION, 0.f, 50.f, 1.f);
+		CVar(GlowAlpha, "Glow alpha", 5, VISUAL | SLIDER_CLAMP, 0, 100, 5, "%i%%");
 		CVar(GlowBorderAlpha, "Glow border alpha", 30, VISUAL | SLIDER_CLAMP, 0, 100, 5, "%i%%");
 
 		NAMESPACE_BEGIN(Theme)
