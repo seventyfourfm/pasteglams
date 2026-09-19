@@ -167,8 +167,8 @@ public:
 
 NAMESPACE_BEGIN(Vars)
 	NAMESPACE_BEGIN(Menu)
-		CVar(CheatTitle, "Cheat title", std::string("ohshitohshitohshitohshit"), VISUAL | DROPDOWN_AUTOUPDATE);
-		CVar(CheatTag, "Cheat tag", std::string("pasta"), VISUAL);
+		CVar(CheatTitle, "Cheat title", Std::string("pastgram"), VISUAL | DROPDOWN_AUTOUPDATE);
+		CVar(CheatTag, "Cheat tag", std::string("[info]"), VISUAL);
 		CVar(PrimaryKey, "Primary key", VK_INSERT, NOBIND);
 		CVar(SecondaryKey, "Secondary key", VK_F3, NOBIND);
 
