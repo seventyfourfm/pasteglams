@@ -368,7 +368,16 @@ static inline void VisualizeRecords(MoveData& tRecord1, MoveData& tRecord2, Colo
 }
 #endif
 
-static inline bool GetYawDifference(MoveData& tRecord1, MoveData& tRecord2, bool bStart, float* pYaw, float flStraightFuzzyValue, int iMaxChanges = 0, int iMaxChangeTime = 0, float flMaxSpeed = 0.f)
+struct YawState
+{
+	int iChanges = 0;
+	int iStart = 0;
+	int iLastSign = 0;
+	bool bLastZero = false;
+};
+
+static inline bool GetYawDifference(MoveData& tRecord1, MoveData& tRecord2, bool bStart, float* pYaw,
+	float flStraightFuzzyValue, YawState& tState, int iMaxChanges = 0, int iMaxChangeTime = 0, float flMaxSpeed = 0.f)
 {
 	const float flYaw1 = Math::VectorAngles(tRecord1.m_vDirection).y, flYaw2 = Math::VectorAngles(tRecord2.m_vDirection).y;
 	const float flTime1 = tRecord1.m_flSimTime, flTime2 = tRecord2.m_flSimTime;
@@ -377,37 +386,34 @@ static inline bool GetYawDifference(MoveData& tRecord1, MoveData& tRecord2, bool
 	*pYaw = Math::NormalizeAngle(flYaw1 - flYaw2);
 	if (flMaxSpeed && tRecord1.m_iMode != MoveEnum::Air)
 		*pYaw *= std::clamp(tRecord1.m_vVelocity.Length2D() / flMaxSpeed, 0.f, 1.f);
-	if (Vars::Aimbot::Projectile::MovesimFrictionFlags.Value & Vars::Aimbot::Projectile::MovesimFrictionFlagsEnum::CalculateIncrease && tRecord1.m_iMode == 1)
+	if ((Vars::Aimbot::Projectile::MovesimFrictionFlags.Value & Vars::Aimbot::Projectile::MovesimFrictionFlagsEnum::CalculateIncrease) && tRecord1.m_iMode == MoveEnum::Air)
 		*pYaw /= GetFrictionScale(tRecord1.m_vVelocity.Length2D(), *pYaw, tRecord1.m_vVelocity.z + SDK::GetGravity() * TICK_INTERVAL, 0.f, 56.f);
 	if (fabsf(*pYaw) > 45.f)
 		return false;
 
-	static int iChanges, iStart;
+	const int iLastSign = tState.iLastSign;
+	tState.iLastSign = *pYaw ? sign(*pYaw) : tState.iLastSign;
 
-	static int iStaticSign = 0;
-	const int iLastSign = iStaticSign;
-	const int iCurrSign = iStaticSign = *pYaw ? sign(*pYaw) : iStaticSign;
+	const bool bLastZero = tState.bLastZero;
+	tState.bLastZero = !*pYaw;
 
-	static bool bStaticZero = false;
-	const bool iLastZero = bStaticZero;
-	const bool iCurrZero = bStaticZero = !*pYaw;
-
-	const bool bChanged = iCurrSign != iLastSign || iCurrZero && iLastZero;
-	const bool bStraight = fabsf(*pYaw) * tRecord1.m_vVelocity.Length2D() * iTicks < flStraightFuzzyValue; // dumb way to get straight bool
+	const bool bChanged = tState.iLastSign != iLastSign || (tState.bLastZero && bLastZero);
+	const bool bStraight = fabsf(*pYaw) * tRecord1.m_vVelocity.Length2D() * iTicks < flStraightFuzzyValue;
 
 	if (bStart)
 	{
-		iChanges = 0, iStart = TIME_TO_TICKS(flTime1);
-		if (bStraight && ++iChanges > iMaxChanges)
+		tState.iChanges = 0;
+		tState.iStart = TIME_TO_TICKS(flTime1);
+
+		// only count the start sample if we're actually allowing changes
+		if (bStraight && iMaxChanges > 0 && ++tState.iChanges > iMaxChanges)
 			return false;
 		return true;
 	}
-	else
-	{
-		if ((bChanged || bStraight) && ++iChanges > iMaxChanges)
-			return false;
-		return iChanges && iStart - TIME_TO_TICKS(flTime2) > iMaxChangeTime ? false : true;
-	}
+
+	if ((bChanged || bStraight) && ++tState.iChanges > iMaxChanges)
+		return false;
+	return tState.iChanges && tState.iStart - TIME_TO_TICKS(flTime2) > iMaxChangeTime ? false : true;
 }
 
 void CMovementSimulation::GetAverageYaw(MoveStorage& tMoveStorage, int iSamples)
@@ -426,6 +432,7 @@ void CMovementSimulation::GetAverageYaw(MoveStorage& tMoveStorage, int iSamples)
 	float flHighMinimumSamples = bGround ? Vars::Aimbot::Projectile::GroundHighMinimumSamples.Value : Vars::Aimbot::Projectile::AirHighMinimumSamples.Value;
 
 	float flAverageYaw = 0.f; int iTicks = 0, iSkips = 0;
+	YawState tYawState;
 	iSamples = std::min(iSamples, int(vRecords.size()));
 	size_t i = 1; for (; i < iSamples; i++)
 	{
@@ -447,7 +454,7 @@ void CMovementSimulation::GetAverageYaw(MoveStorage& tMoveStorage, int iSamples)
 #endif
 
 		float flYaw = 0.f;
-		bool bResult = GetYawDifference(tRecord1, tRecord2, !iTicks, &flYaw, flStraightFuzzyValue, iMaxChanges, iMaxChangeTime, flMaxSpeed);
+		bool bResult = GetYawDifference(tRecord1, tRecord2, !iTicks, &flYaw, flStraightFuzzyValue, tYawState, iMaxChanges, iMaxChangeTime, flMaxSpeed);
 		SDK::Output("GetYawDifference", std::format("{} ({}): {}, {}", i, iTicks, flYaw, bResult).c_str(), { 50, 127, 75 }, Vars::Debug::Logging.Value);
 		if (!bResult)
 			break;
